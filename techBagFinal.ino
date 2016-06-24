@@ -6,6 +6,8 @@
 #define DHTTYPE DHT11
 #define NRMATERII 10
 #define NORE 5
+#define sensorControlPin 7
+#define sensorDataPin A1
 
 struct Orar {
   char nume[20];
@@ -18,6 +20,8 @@ extern unsigned short backpack[];
 extern uint8_t BigFont[];
 UTFT myGLCD(CTE32HR, 38, 39, 40, 41);
 DHT dht(DHTPIN, DHTTYPE);
+unsigned long curTime, prevTime, powerCycle;
+boolean powerState;
 
 byte cartele[NRMATERII][4] = {
   {0, 0, 0, 0},
@@ -87,7 +91,7 @@ bool stare[NRMATERII];
 
 bool puseStare[NRMATERII];
 
-int curr_menu = 2,oldHumi=-1,oldTemp=-1;
+int curr_menu = 2, oldHumi = -1, oldTemp = -1, oldGas = -10;
 
 void setup() {
   Serial.begin(9600);
@@ -96,10 +100,43 @@ void setup() {
   myGLCD.InitLCD();
   IntroLCD();
   dht.begin();
+  gasBegin();
 }
 
 void loop() {
   viewMenu(curr_menu);
+}
+
+void gasBegin() {
+  pinMode(sensorControlPin, OUTPUT);
+  pinMode(sensorDataPin, INPUT);
+  curTime = 0;
+  prevTime = 1;
+  powerCycle = 0;
+  powerState = LOW;
+}
+
+int gasRead() {
+  curTime = millis();
+  if (curTime - prevTime > powerCycle) {
+    prevTime = curTime;
+    if (powerState == LOW) {
+      powerState = HIGH;
+      powerCycle = 60000;
+    }
+    else {
+      powerState = LOW;
+      powerCycle = 90000;
+    }
+    digitalWrite(sensorControlPin, powerState);
+  }
+  if (powerState == LOW) {
+    int coValue = analogRead(sensorDataPin);
+    return coValue;
+  }
+  else{
+    return -1;
+  }
 }
 
 void viewMenu(int noMenu)
@@ -110,7 +147,7 @@ void viewMenu(int noMenu)
   else if (noMenu == 1) {
     afisOrar();
   }
-  else if (noMenu == 2){
+  else if (noMenu == 2) {
     afisareUmiTemp();
   }
 }
@@ -158,24 +195,38 @@ void mainMenu() {
 
 void afisareUmiTemp()
 {
-  int humi=dht.readHumidity();
-  if (oldHumi!=humi){
-    oldHumi=humi;
+  int humi = dht.readHumidity();
+  if (oldHumi != humi) {
+    oldHumi = humi;
     textOnLCD(255, 255, 255, "humi=     ", 0, 0);
   }
-  else{
+  else {
     textOnLCD(255, 255, 255, "humi=", 0, 0);
   }
-  textOnLCD(255, 255, 255, dht.readHumidity(), 80, 0);
-  int temp=dht.readHumidity();
-  if (oldTemp!=temp){
-    oldTemp=temp;
+  textOnLCD(255, 255, 255, humi, 80, 0);
+  int temp = dht.readTemperature();
+  if (oldTemp != temp) {
+    oldTemp = temp;
     textOnLCD(255, 255, 255, "temp=     ", 0, 20);
   }
-  else{
+  else {
     textOnLCD(255, 255, 255, "temp=", 0, 20);
   }
-  textOnLCD(255, 255, 255, dht.readTemperature(), 80, 20);
+  textOnLCD(255, 255, 255, temp, 80, 20);
+  int gas = gasRead();
+  if (oldGas != gas) {
+    oldGas = gas;
+    textOnLCD(255, 255, 255, "gas=             ", 0, 40);
+  }
+  else {
+    textOnLCD(255, 255, 255, "gas=", 0, 40);
+  }
+  if (gas==-1){
+    textOnLCD(255, 0, 0, "n/a", 80, 40);
+  }
+  else{
+    textOnLCD(255, 255, 255, gas, 80, 40);
+  }
 }
 bool readySchool = true, oldReady;
 void afisOrar() {
@@ -295,4 +346,3 @@ void actualizare() {
   }
 
 }
-
