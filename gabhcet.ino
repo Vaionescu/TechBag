@@ -1,6 +1,8 @@
 #include <UTFT.h>
 #include <MFRC522.h>
 #include <DHT.h>
+#include <Wire.h>
+#include "RTClib.h"
 
 #define DHTPIN A0
 #define DHTTYPE DHT11
@@ -58,6 +60,7 @@ struct {
 MFRC522 rfid(10, 9);
 MFRC522::MIFARE_Key key;
 UTFT myGLCD(CTE32HR, 38, 39, 40, 41);
+RTC_DS1307 rtc;
 DHT dht(DHTPIN, DHTTYPE);
 extern unsigned short backpack[];
 extern uint8_t BigFont[];
@@ -77,6 +80,7 @@ void setup() {
   printLCD(255, 0, 0, "Salut!", 100, 100);
   printLCD(200, 200, 0, "Eu sunt TechBag,", 130, 120);
   printLCD(255, 255, 0, "Companionul tau !", 130, 140);
+  //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   Serial.begin(9600);
   SPI.begin();
   rfid.PCD_Init();
@@ -236,6 +240,18 @@ void loop() {
     else {
       printLCD(56, 179, 139, gas, 326, 60);
     }
+    DateTime now = rtc.now();
+    printLCD(255,255,255,now.hour(),0,80);
+    printLCD(255,255,255,":",40,80);
+    printLCD(255,255,255,now.minute(),60,80);
+    printLCD(255,255,255,":",100,80);
+    printLCD(255,255,255,now.second(),120,80);
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(now.second(), DEC);
+    Serial.println();
   }
 }
 int gasRead() {
